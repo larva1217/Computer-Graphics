@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>20215226 이한석</title>
+    </head>
+    <body>
+        <div style="background-color:#dfffff; width:512px;">
+            ** Change the rotation axis : Press button '<b>x</b>','<b>y</b>' or '<b>z</b>'
+        </div>
+        <div style="background-color:#dfffff; width:512px;">
+            ** Stop/Start the rotation : Press the button '<b>Spacebar</b>'
+        </div>
+        <canvas id="myCanvas" width="512" height="512">
+            Oops... your browser doesn't support HTML5 canvas element!
+        </canvas>
+        <script type="x-shader/x-vertex" id="vertexShader">
+            attribute vec3 vColor;
+            varying vec4 fColor;
+            uniform mat4 rotX, rotY, rotZ;
+            void main(){
+                fColor = vec4(vColor, 1);
+                gl_Position = rotX * rotY * rotZ * vec4(position, 1);
+            }
+        </script>
+        <script type="x-shader/x-fragment" id="fragmentShader">
+            precision mediump float;
+            varying vec4 fColor;
+            void main(){
+                gl_FragColor = fColor;
+            }
+        </script>
+
+        <script type="module">
+            import * as THREE from 'https://unpkg.com/three/build/three.module.js'
+
+            let scene, camera, renderer, material;
+            var angles = [0,0,0];
+            var axis = 0;
+            var stop = false;
+
+            init();
+            animate();
+
+            function init(){
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0xaaafaf);
+            
+                camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+                var canvas = document.getElementById("myCanvas");
+                renderer = new THREE.WebGLRenderer({canvas});
+                document.body.appendChild(renderer.domElement);
+            
+                const vertices = new Float32Array([
+                    -0.5, 0.5, -Math.sqrt(3) / 2, 
+                    -1, 0.5, 0,                 
+                    -0.5, 0.5, Math.sqrt(3) / 2,  
+                    0.5, 0.5, Math.sqrt(3) / 2,  
+                    1, 0.5, 0,               
+                    0.5, 0.5, -Math.sqrt(3) / 2, 
+                    0,0.5,0,
+                    0,-1,0
+                ]);
+            
+                const colors = new Float32Array([
+                    0, 1, 0,  
+                    0, 1, 1,
+                    0, 0, 1,  
+                    1, 0, 1,  
+                    1, 0, 0,  
+                    1, 1, 0,  
+                    1,1,1, 
+                    1, 1, 1   
+                ]);
+                const indices=[
+                    0, 1, 6,  
+                    1, 2, 6,  
+                    2, 3, 6,  
+                    3, 4, 6,  
+                    4, 5, 6,  
+                    5, 0, 6,  
+                    1, 0, 7,  
+                    2, 1, 7,  
+                    3, 2, 7,  
+                    4, 3, 7,  
+                    5, 4, 7,  
+                    0, 5, 7  
+                ];
+
+                const geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices,3));
+                geometry.setAttribute('vColor', new THREE.Float32BufferAttribute(colors,3))
+                geometry.setIndex(indices);
+
+                material = new THREE.ShaderMaterial({
+                    uniforms:{
+                        rotX : {value : [1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]},
+                        rotY : {value : [1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]},
+                        rotZ : {value : [1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]},
+                    },
+                    vertexShader:document.getElementById("vertexShader").textContent,
+                    fragmentShader:document.getElementById("fragmentShader").textContent
+                });
+
+                const mesh = new THREE.Mesh(geometry, material);
+                scene.add(mesh);
+
+                window.onkeydown = function(event){
+                    var key = String.fromCharCode(event.keyCode);
+                    switch(key){
+                        case 'X': axis = 0; break;
+                        case 'Y': axis = 1; break;
+                        case 'Z': axis = 2; break;
+                        case ' ': stop = !stop; break;
+                    }
+                }
+            }
+            
+            function animate(){
+                requestAnimationFrame(animate);
+                if(!stop){
+                    angles[axis] += 0.01;
+                    const s = Math.sin(angles[axis]);
+                    const c = Math.cos(angles[axis]);
+                    if(axis == 0){
+                        material.uniforms.rotX.value = [1,0,0,0,0,c,s,0,0,-s,c,0,0,0,0,1];
+                    }
+                    else if(axis == 1){
+                        material.uniforms.rotY.value = [c,0,-s,0,0,1,0,0,s,0,c,0,0,0,0,1];
+                    }
+                    else{
+                        material.uniforms.rotZ.value = [c,s,0,0,-s,c,0,0,0,0,1,0,0,0,0,1];
+                    }
+                }
+                renderer.render(scene, camera);
+            }       
+        </script>
+    </body>
+</html>
