@@ -1,0 +1,214 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>20215226 이한석 - Subdivision</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div style="width:512px; text-align:center;">
+        <input type="radio" id="wireframe" name="shading" checked> Wireframe
+        <input type="radio" id="flat" name="shading"> Constant
+        <input type="radio" id="smooth" name="shading"> Gouraud
+        <input type="radio" id="phong" name="shading"> Phong Shading
+    </div>
+
+    </div>
+    <div style="width: 512px; text-align: center;">
+        Subdivision Level: 1 <input type="range" id="level" value="1" min="1" max="5" step="1"> 5
+    </div>
+    <canvas id="myCanvas">
+        Oops... your browser doesn't support the HTML5 canvas element!
+    </canvas>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { TrackballControls } from 'three/addons/controls/TrackballControls.js';
+
+        let scene, camera, renderer, controls, mesh, materials=[];
+        var vPosition = [];
+        var subLevel = 1, shadingMode = 0;
+
+        const vA = new THREE.Vector3(0.0, 0.0, 1.0);
+        const vB = new THREE.Vector3(0.0, 0.942809, -0.333333);
+        const vC = new THREE.Vector3(-0.816497, -0.471405, -0.333333);
+        const vD = new THREE.Vector3(0.816497, -0.471405, -0.333333);
+
+        init();
+        render();
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x808080);
+
+            // 3D Orthographic Viewing
+            const viewLength = 2;
+            if (window.innerWidth > window.innerHeight) {   // landscape view
+                var ratio = viewLength * window.innerWidth / window.innerHeight;
+                camera = new THREE.OrthographicCamera(-ratio, ratio, viewLength, -viewLength, 0, 1000);
+            }
+            else {  // portrait view
+                var ratio = viewLength * window.innerHeight / window.innerWidth;
+                camera = new THREE.OrthographicCamera(-viewLength, viewLength, ratio, -ratio, 0, 1000);
+            }
+            camera.position.z = 500;
+            // 3D Perspective Viewing
+            //const aspectRatio = window.innerWidth / window.innerHeight;
+            //camera = new THREE.PerspectiveCamera(90, aspectRatio, 0.001, 1000);
+            //camera.position.z = 2;
+
+            var canvas = document.getElementById("myCanvas");
+            renderer = new THREE.WebGLRenderer({ canvas });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setAnimationLoop(render);
+            document.body.appendChild(renderer.domElement);
+
+            controls = new TrackballControls(camera, renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0x808080);
+
+            const light = new THREE.DirectionalLight(0xFFFFFF);
+            light.position.set(0.0, 0.0, 1.0);
+
+            scene.add(ambientLight);
+            scene.add(light);
+
+            materials[0] = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true });
+            materials[1] = new THREE.MeshPhongMaterial({ color: 0xff9900, flatShading: true });
+            materials[2] = new THREE.MeshLambertMaterial({ color: 0xff9900 });
+            materials[3] = new THREE.MeshPhongMaterial({ color: 0xff9900, specular:0xffffff, shininess:100 });
+
+            const vertices = new Float32Array([
+                vA.x, vA.y, vA.z, vB.x, vB.y, vB.z, vC.x, vC.y, vC.z,
+                vA.x, vA.y, vA.z, vC.x, vC.y, vC.z, vD.x, vD.y, vD.z,
+                vA.x, vA.y, vA.z, vD.x, vD.y, vD.z, vB.x, vB.y, vB.z,
+                vD.x, vD.y, vD.z, vC.x, vC.y, vC.z, vB.x, vB.y, vB.z,
+            ]);
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setAttribute('normal', new THREE.Float32BufferAttribute(vertices, 3));
+                
+            mesh = new THREE.Mesh(geometry, materials[shadingMode]);
+            scene.add(mesh);
+
+            window.addEventListener('resize', onWindowResize);
+
+            document.getElementById("level").onchange = function(event) {
+                subLevel = event.target.value;
+                subdivide(subLevel);
+            }
+
+            const shading = document.getElementsByName("shading");
+            shading.forEach((radio)=>{
+                radio.addEventListener("change", (event)=>{
+                    if(document.getElementById("wireframe").checked){
+                        shadingMode = 0;
+                    }
+                    else if(document.getElementById("flat").checked){
+                        shadingMode = 1;
+                    }
+                    else if(document.getElementById("smooth").checked){
+                        shadingMode = 2;
+                    }
+                    else if(document.getElementById("phong").checked){
+                        shadingMode = 3;
+                    }
+
+                    subdivide(subLevel);
+                });
+            });
+        }
+
+        function onWindowResize() {
+            // 3D Orthographic Viewing
+            const viewLength = 2;
+            if (window.innerWidth > window.innerHeight) {   // landscape view
+                var ratio = viewLength * window.innerWidth / window.innerHeight;
+                camera = new THREE.OrthographicCamera(-ratio, ratio, viewLength, -viewLength, 0, 1000);
+            }
+            else {  // portrait view
+                var ratio = viewLength * window.innerHeight / window.innerWidth;
+                camera = new THREE.OrthographicCamera(-viewLength, viewLength, ratio, -ratio, 0, 1000);
+            }
+            camera.position.z = 500;
+            // 3D Perspective Viewing
+            //const aspectRatio = window.innerWidth / window.innerHeight;
+            //camera = new THREE.PerspectiveCamera(90, aspectRatio, 0.001, 1000);
+            //camera.position.z = 2;
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            controls.dispose();
+            controls = new TrackballControls(camera, renderer.domElement);
+        }
+
+        function render() {
+            controls.update();
+
+            renderer.render(scene, camera);
+        }
+
+        function subdivide(level) {
+            vPosition = [];
+
+            divideTriangle(vA, vB, vC, level);
+            divideTriangle(vA, vC, vD, level);
+            divideTriangle(vA, vD, vB, level);
+            divideTriangle(vD, vC, vB, level);
+
+            var vertices = new Float32Array(vPosition.length * 3);
+            for (var i=0; i<vPosition.length; i++) {
+                vertices[i*3] = vPosition[i].x;
+                vertices[i*3+1] = vPosition[i].y;
+                vertices[i*3+2] = vPosition[i].z;
+            }
+
+            mesh.geometry.dispose();
+            scene.remove(mesh);
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setAttribute('normal', new THREE.Float32BufferAttribute(vertices, 3));
+                
+            mesh = new THREE.Mesh(geometry, materials[shadingMode]);
+            scene.add(mesh);
+        }
+
+        function divideTriangle(a, b, c, level) {
+            if (level > 1) {
+                var ab = new THREE.Vector3().addVectors(a, b);
+                var bc = new THREE.Vector3().addVectors(b, c);
+                var ca = new THREE.Vector3().addVectors(c, a);
+                ab.normalize();
+                bc.normalize();
+                ca.normalize();
+
+                divideTriangle(ca, a, ab, level-1);
+                divideTriangle(ab, b, bc, level-1);
+                divideTriangle(bc, c, ca, level-1);
+                divideTriangle(ab, bc, ca, level-1);
+            }
+            else {
+                vPosition.push(a);
+                vPosition.push(b);
+                vPosition.push(c);
+            }
+        }
+    </script>
+</body>
+</html>
