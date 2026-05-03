@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>20215226 이한석</title>
+    </head>
+    <body>
+
+        <div>
+            <button id="xButton">Rotate X</button>
+            <button id="yButton">Rotate Y</button>
+            <button id="zButton">Rotate Z</button>
+            <button id="toggleButton">Stop Rotation</button>
+        </div>
+
+        <div style="background-color:#dfffff; width:512px; margin-top: 5px; margin-bottom: 5px;">
+            <b>A</b>, <b>D</b>, <b>S</b>, <b>W</b> to translate in the x-axis and y-axis direction
+        </div>
+
+        <canvas id="myCanvas" width="512" height="512">
+            Oops... your browser doesn't support HTML5 canvas element!
+        </canvas>
+
+        <script type="x-shader/x-vertex" id="vertexShader">
+            attribute vec3 vColor;
+            varying vec4 fColor;
+            uniform mat4 trM;
+            void main(){
+                fColor = vec4(vColor, 1);
+                gl_Position = trM * vec4(position, 1);
+            }
+        </script>
+
+        <script type="x-shader/x-fragment" id="fragmentShader">
+            precision mediump float;
+            varying vec4 fColor;
+            void main(){
+                gl_FragColor = fColor;
+            }
+        </script>
+
+        <script type="module">
+            import * as THREE from 'https://unpkg.com/three/build/three.module.js'
+
+            let scene, camera, renderer, mesh, mesh1; 
+            var angles = [0, 0, 0];
+            var axis = 0;
+            var centerPosX = 0;
+            var centerPosY = 0;
+            var stop = false;
+
+            
+            const rtX = new THREE.Matrix4();
+            const rtY = new THREE.Matrix4();
+            const rtZ = new THREE.Matrix4();
+
+          
+            const scM = new THREE.Matrix4();
+
+            
+            const trM = new THREE.Matrix4();
+
+            
+            var m = new THREE.Matrix4();
+            var m1 = new THREE.Matrix4();
+
+            init(); 
+            animate(); 
+
+            function init(){ 
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x808080);
+            
+                camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+                var canvas = document.getElementById("myCanvas");
+                renderer = new THREE.WebGLRenderer({canvas});
+                document.body.appendChild(renderer.domElement);
+            
+                const cubevertices = new Float32Array([
+                    -0.5,-0.5,-0.5,
+                    0.5,-0.5,-0.5,
+                    0.5,0.5,-0.5,
+                    -0.5,0.5,-0.5,
+                    -0.5,-0.5,0.5,
+                    0.5,-0.5,0.5,
+                    0.5,0.5,0.5,
+                    -0.5,0.5,0.5,
+                ]);
+                const cubecolors = new Float32Array([
+                    0,0,0,
+                    1,0,0,
+                    1,1,0,
+                    0,1,0,
+                    0,0,1,
+                    1,0,1,
+                    1,1,1,
+                    0,1,1,
+                ]);
+                const cubeindices=[
+                    1,0,3,1,3,2,
+                    2,3,7,2,7,6,
+                    3,0,4,3,4,7,
+                    4,5,6,4,6,7,
+                    5,4,0,5,0,1,
+                    6,5,1,6,1,2,
+                ];
+
+                const hexVertices = new Float32Array([
+                -0.5, 0.5, -Math.sqrt(3) / 2, 
+                -1, 0.5, 0,                 
+                -0.5, 0.5, Math.sqrt(3) / 2,  
+                0.5, 0.5, Math.sqrt(3) / 2,  
+                1, 0.5, 0,               
+                0.5, 0.5, -Math.sqrt(3) / 2, 
+                0, 0.5, 0, 
+                0, -1, 0   
+                ]);
+
+                const hexColors = new Float32Array([
+                    0, 1, 0,  
+                    0, 1, 1,
+                    0, 0, 1,  
+                    1, 0, 1,  
+                    1, 0, 0,  
+                    1, 1, 0,  
+                    1, 1, 1, 
+                    1, 1, 1   
+                ]);
+
+                const hexIndices = [
+                    0, 1, 6,  
+                    1, 2, 6,  
+                    2, 3, 6,  
+                    3, 4, 6,  
+                    4, 5, 6,  
+                    5, 0, 6,  
+                    1, 0, 7,  
+                    2, 1, 7,  
+                    3, 2, 7,  
+                    4, 3, 7,  
+                    5, 4, 7,  
+                    0, 5, 7  
+                ];
+
+                const geomtery = new THREE.BufferGeometry();
+                geomtery.setAttribute('position', new THREE.Float32BufferAttribute(cubevertices,3));
+                geomtery.setAttribute('vColor', new THREE.Float32BufferAttribute(cubecolors,3))
+                geomtery.setIndex(cubeindices);
+
+                const geometryPyramid = new THREE.BufferGeometry();
+                geometryPyramid.setAttribute('position', new THREE.Float32BufferAttribute(hexVertices, 3));
+                geometryPyramid.setAttribute('vColor', new THREE.Float32BufferAttribute(hexColors, 3));
+                geometryPyramid.setIndex(hexIndices);
+
+                const material = new THREE.ShaderMaterial({
+                    uniforms:{
+                        trM : {value : [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]},
+                    },
+                    vertexShader:document.getElementById("vertexShader").textContent,
+                    fragmentShader:document.getElementById("fragmentShader").textContent
+                });
+
+                mesh = new THREE.Mesh(geomtery,material);
+                scene.add(mesh);
+
+                mesh1 = new THREE.Mesh(geometryPyramid,material.clone());
+                scene.add(mesh1);
+                
+                const lineVertices = new Float32Array([
+                    0,0,0,1,0,0,0,0,0,0,1,0,0,0,0,0,0,1,
+                ]);
+                const lineColors = new Float32Array([
+                    1,0,0,1,0,0,0,1,0,0,1,0,0,0,1,0,0,1,
+                ]);
+
+                const lineGeometry = new THREE.BufferGeometry();
+                lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(lineVertices,3));
+                lineGeometry.setAttribute('vColor', new THREE.Float32BufferAttribute(lineColors,3));
+
+                const line = new THREE.LineSegments(lineGeometry, material.clone());
+                scene.add(line);
+
+                document.getElementById("xButton").onclick = function(){
+                    axis = 0;
+                    angles = [0, 0, 0];
+                };
+                document.getElementById("yButton").onclick = function(){
+                    axis = 1;
+                    angles = [0, 0, 0];
+                };
+                document.getElementById("zButton").onclick = function(){
+                    axis = 2;
+                    angles = [0, 0, 0];
+                };
+                document.getElementById("toggleButton").onclick = function(){
+                    stop = !stop;
+                }
+
+                window.onkeydown = function(event){
+                    var key = String.fromCharCode(event.keyCode);
+                    switch(key){
+                        case 'a':
+                        case 'A':
+                            centerPosX -= 0.1;
+                            break;
+
+                        case 'd':
+                        case 'D':
+                            centerPosX += 0.1;
+                            break;
+
+                        case 's':
+                        case 'S':
+                            centerPosY -= 0.1;
+                            break;
+
+                        case 'w':
+                        case 'W':
+                            centerPosY += 0.1;
+                            break;
+                    }
+                }
+            }
+            
+
+            function animate(){
+                requestAnimationFrame(animate);
+
+                //mesh.rotateZ(0.01);
+                if(!stop){
+                    angles[axis] += 0.03
+                    scM.makeScale(0.5,0.5,0.5);
+
+                    if (axis === 0) {
+                        rtX.makeRotationX(-angles[0]);
+                    } 
+
+                    if (axis === 1) {
+                        rtY.makeRotationY(-angles[1]);
+                    } 
+                    
+                    if (axis === 2) {
+                        rtZ.makeRotationZ(-angles[2]);
+                    } 
+
+                trM.makeTranslation(centerPosX-0.5, centerPosY, 0);
+
+                m.identity();
+                m.multiply(trM);
+                m.multiply(rtX);
+                m.multiply(rtY);
+                m.multiply(rtZ);
+                m.multiply(scM);
+                mesh.material.uniforms.trM.value = m;
+                
+                if (axis === 0) {
+                    rtX.makeRotationX(angles[0]);
+                } 
+                
+                if (axis === 1) {
+                    rtY.makeRotationY(angles[1]);
+                } 
+                
+                if (axis === 2) {
+                    rtZ.makeRotationZ(angles[2]);
+                } 
+                
+                trM.makeTranslation(centerPosX+0.5, centerPosY, 0);
+                m1.identity();
+                m1.multiply(trM);
+                m1.multiply(rtX);
+                m1.multiply(rtY);
+                m1.multiply(rtZ);
+                m1.multiply(scM);
+                mesh1.material.uniforms.trM.value = m1;
+
+                renderer.render(scene, camera);
+                }
+            }
+        </script>
+    </body>
+</html>
